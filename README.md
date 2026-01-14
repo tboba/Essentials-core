@@ -108,10 +108,18 @@ Players must stand still during the delay or the teleport is canceled. Players w
 *   `spawn-protection.enter-title` / `enter-subtitle` - Title on enter
 *   `spawn-protection.exit-title` / `exit-subtitle` - Title on exit
 
+**MOTD (Message of the Day)**
+
+*   `motd.enabled` - Show message on player join (default: true)
+*   `motd.message` - Message to show (supports multi-line with triple quotes)
+*   Placeholders: `%player%`
+*   Color codes: `&0-&9`, `&a-&f`, `&#RRGGBB`
+
 **Random Teleport (RTP)**
 
 *   `rtp.world` - World to teleport to (default: "default")
 *   `rtp.radius` - Maximum radius from 0,0 for random location (default: 5000)
+*   `rtp.cooldown` - Cooldown in seconds between uses (default: 300)
 
 **Kits**
 
