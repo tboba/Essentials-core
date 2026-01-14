@@ -18,11 +18,13 @@ import com.nhulston.essentials.events.ChatEvent;
 import com.nhulston.essentials.events.SpawnProtectionEvent;
 import com.nhulston.essentials.events.SpawnRegionTitleEvent;
 import com.nhulston.essentials.events.SpawnTeleportEvent;
+import com.nhulston.essentials.events.TeleportMovementEvent;
 import com.nhulston.essentials.managers.ChatManager;
 import com.nhulston.essentials.managers.HomeManager;
 import com.nhulston.essentials.managers.KitManager;
 import com.nhulston.essentials.managers.SpawnManager;
 import com.nhulston.essentials.managers.SpawnProtectionManager;
+import com.nhulston.essentials.managers.TeleportManager;
 import com.nhulston.essentials.managers.TpaManager;
 import com.nhulston.essentials.managers.WarpManager;
 import com.nhulston.essentials.util.ConfigManager;
@@ -40,6 +42,7 @@ public class Essentials extends JavaPlugin {
     private ChatManager chatManager;
     private SpawnProtectionManager spawnProtectionManager;
     private TpaManager tpaManager;
+    private TeleportManager teleportManager;
     private KitManager kitManager;
 
     public Essentials(@Nonnull JavaPluginInit init) {
@@ -60,6 +63,7 @@ public class Essentials extends JavaPlugin {
         chatManager = new ChatManager(configManager);
         spawnProtectionManager = new SpawnProtectionManager(configManager, storageManager);
         tpaManager = new TpaManager();
+        teleportManager = new TeleportManager(configManager);
         kitManager = new KitManager(getDataDirectory(), storageManager);
     }
 
@@ -82,27 +86,31 @@ public class Essentials extends JavaPlugin {
             tpaManager.shutdown();
         }
 
+        if (teleportManager != null) {
+            teleportManager.shutdown();
+        }
+
         Log.info("Essentials shut down.");
     }
 
     private void registerCommands() {
         // Home commands
         getCommandRegistry().registerCommand(new SetHomeCommand(homeManager));
-        getCommandRegistry().registerCommand(new HomeCommand(homeManager));
+        getCommandRegistry().registerCommand(new HomeCommand(homeManager, teleportManager));
         getCommandRegistry().registerCommand(new DelHomeCommand(homeManager));
 
         // Warp commands
         getCommandRegistry().registerCommand(new SetWarpCommand(warpManager));
-        getCommandRegistry().registerCommand(new WarpCommand(warpManager));
+        getCommandRegistry().registerCommand(new WarpCommand(warpManager, teleportManager));
         getCommandRegistry().registerCommand(new DelWarpCommand(warpManager));
 
         // Spawn commands
         getCommandRegistry().registerCommand(new SetSpawnCommand(spawnManager));
-        getCommandRegistry().registerCommand(new SpawnCommand(spawnManager));
+        getCommandRegistry().registerCommand(new SpawnCommand(spawnManager, teleportManager));
 
         // TPA commands
         getCommandRegistry().registerCommand(new TpaCommand(tpaManager));
-        getCommandRegistry().registerCommand(new TpacceptCommand(tpaManager));
+        getCommandRegistry().registerCommand(new TpacceptCommand(tpaManager, teleportManager));
 
         // Kit command
         getCommandRegistry().registerCommand(new KitCommand(kitManager));
@@ -113,6 +121,7 @@ public class Essentials extends JavaPlugin {
         new BuildProtectionEvent(configManager).register(getEntityStoreRegistry());
         new SpawnProtectionEvent(spawnProtectionManager).register(getEntityStoreRegistry());
         new SpawnRegionTitleEvent(spawnProtectionManager, configManager).register(getEntityStoreRegistry());
+        new TeleportMovementEvent(teleportManager).register(getEntityStoreRegistry());
 
         SpawnTeleportEvent spawnTeleportEvent = new SpawnTeleportEvent(spawnManager, configManager, storageManager);
         spawnTeleportEvent.registerEvents(getEventRegistry());

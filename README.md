@@ -57,6 +57,7 @@ Essentials is an all-in-one utility plugin for Hytale server administrators.
 | <code>essentials.kit.create</code>          | Create new kits                        |
 | <code>essentials.kit.delete</code>          | Delete kits                            |
 | <code>essentials.kit.cooldown.bypass</code> | Bypass kit cooldowns                   |
+| <code>essentials.teleport.bypass</code>     | Bypass teleport delay                  |
 
 To setup permissions, please view these unofficial docs: [https://hytale-docs.pages.dev/modding/plugins/permissions/](https://hytale-docs.pages.dev/modding/plugins/permissions/)
 
@@ -79,6 +80,12 @@ Configuration is stored in `config.toml`. Key options:
 **Build Protection**
 
 *   `build.disable-building` - Disable building globally (bypass: <code>essentials.build.bypass</code>)
+
+**Teleport**
+
+*   `teleport.delay` - Delay in seconds before teleporting (default: 3, set to 0 to disable)
+
+Players must stand still during the delay or the teleport is canceled. Players with `essentials.teleport.bypass` skip the delay.
 
 **Spawn**
 

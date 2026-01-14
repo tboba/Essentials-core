@@ -27,6 +27,12 @@ Default = "&0[&fPlayer&0] &f%player%: %message%"
 # Players with essentials.build.bypass permission can still build
 disable-building = false
 
+[teleport]
+# Delay (in seconds) before teleporting. Set to 0 to disable.
+# Players must stand still during the delay or the teleport is canceled.
+# Players with essentials.teleport.bypass permission skip the delay.
+delay = 3
+
 [spawn]
 # This section requires a spawn to be set with /setspawn
 

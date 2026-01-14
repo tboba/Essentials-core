@@ -16,6 +16,7 @@ public class ConfigManager {
     private static final int DEFAULT_MAX_HOMES = 5;
     private static final String DEFAULT_CHAT_FORMAT = "&7%player%&f: %message%";
     private static final int DEFAULT_SPAWN_PROTECTION_RADIUS = 16;
+    private static final int DEFAULT_TELEPORT_DELAY = 3;
 
     private final Path configPath;
     private int maxHomes = DEFAULT_MAX_HOMES;
@@ -32,6 +33,9 @@ public class ConfigManager {
     private boolean firstJoinSpawnEnabled = true;
     private boolean everyJoinSpawnEnabled = false;
     private boolean deathSpawnEnabled = true;
+
+    // Teleport settings
+    private int teleportDelay = DEFAULT_TELEPORT_DELAY;
 
     // Spawn protection settings
     private boolean spawnProtectionEnabled = true;
@@ -90,6 +94,9 @@ public class ConfigManager {
             firstJoinSpawnEnabled = config.getBoolean("spawn.first-join", () -> true);
             everyJoinSpawnEnabled = config.getBoolean("spawn.every-join", () -> false);
             deathSpawnEnabled = config.getBoolean("spawn.death-spawn", () -> true);
+
+            // Teleport config
+            teleportDelay = Math.toIntExact(config.getLong("teleport.delay", () -> (long) DEFAULT_TELEPORT_DELAY));
 
             // Spawn protection config
             spawnProtectionEnabled = config.getBoolean("spawn-protection.enabled", () -> true);
@@ -161,6 +168,10 @@ public class ConfigManager {
 
     public boolean isDeathSpawnEnabled() {
         return deathSpawnEnabled;
+    }
+
+    public int getTeleportDelay() {
+        return teleportDelay;
     }
 
     public boolean isSpawnProtectionEnabled() {

@@ -2,24 +2,27 @@ package com.nhulston.essentials.commands.spawn;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.basecommands.AbstractPlayerCommand;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.nhulston.essentials.managers.SpawnManager;
+import com.nhulston.essentials.managers.TeleportManager;
 import com.nhulston.essentials.models.Spawn;
 import com.nhulston.essentials.util.Msg;
-import com.nhulston.essentials.util.TeleportUtil;
 
 import javax.annotation.Nonnull;
 
 public class SpawnCommand extends AbstractPlayerCommand {
     private final SpawnManager spawnManager;
+    private final TeleportManager teleportManager;
 
-    public SpawnCommand(@Nonnull SpawnManager spawnManager) {
+    public SpawnCommand(@Nonnull SpawnManager spawnManager, @Nonnull TeleportManager teleportManager) {
         super("spawn", "Teleport to the server spawn");
         this.spawnManager = spawnManager;
+        this.teleportManager = teleportManager;
 
         requirePermission("essentials.spawn");
     }
@@ -34,12 +37,12 @@ public class SpawnCommand extends AbstractPlayerCommand {
             return;
         }
 
-        String error = TeleportUtil.teleportToSpawn(playerRef, spawn);
-        if (error != null) {
-            Msg.fail(context, error);
-            return;
-        }
+        Vector3d startPosition = playerRef.getTransform().getPosition();
 
-        Msg.success(context, "Teleported to spawn.");
+        teleportManager.queueTeleport(
+            playerRef, ref, store, startPosition,
+            spawn.getWorld(), spawn.getX(), spawn.getY(), spawn.getZ(), spawn.getYaw(), spawn.getPitch(),
+            "Teleported to spawn."
+        );
     }
 }

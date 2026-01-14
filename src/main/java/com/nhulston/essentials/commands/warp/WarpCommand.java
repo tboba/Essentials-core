@@ -2,6 +2,7 @@ package com.nhulston.essentials.commands.warp;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
 import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
@@ -9,10 +10,10 @@ import com.hypixel.hytale.server.core.command.system.basecommands.AbstractPlayer
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.nhulston.essentials.managers.TeleportManager;
 import com.nhulston.essentials.managers.WarpManager;
 import com.nhulston.essentials.models.Warp;
 import com.nhulston.essentials.util.Msg;
-import com.nhulston.essentials.util.TeleportUtil;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
@@ -20,12 +21,12 @@ import java.util.Map;
 public class WarpCommand extends AbstractPlayerCommand {
     private final WarpManager warpManager;
 
-    public WarpCommand(@Nonnull WarpManager warpManager) {
+    public WarpCommand(@Nonnull WarpManager warpManager, @Nonnull TeleportManager teleportManager) {
         super("warp", "Teleport to a warp");
         this.warpManager = warpManager;
 
         requirePermission("essentials.warp");
-        addUsageVariant(new WarpNamedCommand(warpManager));
+        addUsageVariant(new WarpNamedCommand(warpManager, teleportManager));
     }
 
     @Override
@@ -44,11 +45,13 @@ public class WarpCommand extends AbstractPlayerCommand {
 
     private static class WarpNamedCommand extends AbstractPlayerCommand {
         private final WarpManager warpManager;
+        private final TeleportManager teleportManager;
         private final RequiredArg<String> nameArg;
 
-        WarpNamedCommand(@Nonnull WarpManager warpManager) {
+        WarpNamedCommand(@Nonnull WarpManager warpManager, @Nonnull TeleportManager teleportManager) {
             super("Teleport to a specific warp");
             this.warpManager = warpManager;
+            this.teleportManager = teleportManager;
             this.nameArg = withRequiredArg("name", "Warp name", ArgTypes.STRING);
         }
 
@@ -63,15 +66,13 @@ public class WarpCommand extends AbstractPlayerCommand {
                 return;
             }
 
-            String error = TeleportUtil.teleportSafe(store, ref, warp.getWorld(),
-                    warp.getX(), warp.getY(), warp.getZ(), warp.getYaw(), warp.getPitch());
+            Vector3d startPosition = playerRef.getTransform().getPosition();
 
-            if (error != null) {
-                Msg.fail(context, error);
-                return;
-            }
-
-            Msg.success(context, "Teleported to warp '" + warpName + "'");
+            teleportManager.queueTeleport(
+                playerRef, ref, store, startPosition,
+                warp.getWorld(), warp.getX(), warp.getY(), warp.getZ(), warp.getYaw(), warp.getPitch(),
+                "Teleported to warp '" + warpName + "'"
+            );
         }
     }
 }

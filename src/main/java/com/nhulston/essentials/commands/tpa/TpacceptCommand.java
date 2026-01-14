@@ -2,6 +2,7 @@ package com.nhulston.essentials.commands.tpa;
 
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.math.vector.Vector3d;
 import com.hypixel.hytale.server.core.command.system.CommandContext;
 import com.hypixel.hytale.server.core.command.system.arguments.system.RequiredArg;
 import com.hypixel.hytale.server.core.command.system.arguments.types.ArgTypes;
@@ -10,9 +11,9 @@ import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.Universe;
 import com.hypixel.hytale.server.core.universe.world.World;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.nhulston.essentials.managers.TeleportManager;
 import com.nhulston.essentials.managers.TpaManager;
 import com.nhulston.essentials.util.Msg;
-import com.nhulston.essentials.util.TeleportUtil;
 
 import javax.annotation.Nonnull;
 
@@ -22,11 +23,13 @@ import javax.annotation.Nonnull;
  */
 public class TpacceptCommand extends AbstractPlayerCommand {
     private final TpaManager tpaManager;
+    private final TeleportManager teleportManager;
     private final RequiredArg<String> playerArg;
 
-    public TpacceptCommand(@Nonnull TpaManager tpaManager) {
+    public TpacceptCommand(@Nonnull TpaManager tpaManager, @Nonnull TeleportManager teleportManager) {
         super("tpaccept", "Accept a teleport request");
         this.tpaManager = tpaManager;
+        this.teleportManager = teleportManager;
         this.playerArg = withRequiredArg("player", "Player whose request to accept", ArgTypes.STRING);
 
         requirePermission("essentials.tpaccept");
@@ -50,11 +53,24 @@ public class TpacceptCommand extends AbstractPlayerCommand {
             return;
         }
 
-        // Teleport the requester to the target (the player who accepted)
-        TeleportUtil.teleportToPlayer(requester, playerRef);
+        // Get the requester's entity ref and store
+        Ref<EntityStore> requesterRef = requester.getReference();
+        if (requesterRef == null || !requesterRef.isValid()) {
+            Msg.fail(context, requesterName + " is no longer available.");
+            return;
+        }
+        Store<EntityStore> requesterStore = requesterRef.getStore();
 
-        // Notify both players
+        // Notify the target that the request was accepted
         Msg.success(context, "Teleport request from " + requesterName + " accepted.");
-        Msg.success(requester, "Teleporting to " + playerRef.getUsername() + "...");
+
+        // Queue the teleport for the requester (they need to stand still)
+        Vector3d startPosition = requester.getTransform().getPosition();
+        
+        teleportManager.queueTeleportToPlayer(
+            requester, requesterRef, requesterStore, startPosition,
+            playerRef,  // target player
+            "Teleported to " + playerRef.getUsername() + "."
+        );
     }
 }

@@ -122,19 +122,18 @@ public final class TeleportUtil {
      * Teleports a player to spawn, finding a safe Y position if needed.
      *
      * @param player The player to teleport
-     * @param spawn The spawn location
-     * @return null if successful, error message if failed
+     * @param spawn  The spawn location
      */
     @Nullable
-    public static String teleportToSpawn(@Nonnull PlayerRef player, @Nonnull Spawn spawn) {
+    public static void teleportToSpawn(@Nonnull PlayerRef player, @Nonnull Spawn spawn) {
         Ref<EntityStore> playerRef = player.getReference();
         if (playerRef == null || !playerRef.isValid()) {
-            return "Player reference is invalid.";
+            return;
         }
 
         World targetWorld = Universe.get().getWorld(spawn.getWorld());
         if (targetWorld == null) {
-            return "World '" + spawn.getWorld() + "' is not loaded.";
+            return;
         }
 
         // Find safe Y position
@@ -146,7 +145,6 @@ public final class TeleportUtil {
 
         Teleport teleport = new Teleport(targetWorld, position, rotation);
         store.putComponent(playerRef, Teleport.getComponentType(), teleport);
-        return null;
     }
 
     /**
@@ -173,6 +171,49 @@ public final class TeleportUtil {
 
         Teleport teleport = new Teleport(targetWorld, position, rotation);
         buffer.putComponent(ref, Teleport.getComponentType(), teleport);
+    }
+
+    /**
+     * Teleports a player to another player by UUID (for delayed teleports).
+     *
+     * @param store The entity store
+     * @param playerRef The player to teleport
+     * @param targetUuid The UUID of the target player
+     * @return null if successful, error message if failed
+     */
+    @Nullable
+    public static String teleportToPlayerByUuid(@Nonnull Store<EntityStore> store,
+                                                @Nonnull Ref<EntityStore> playerRef,
+                                                @Nonnull java.util.UUID targetUuid) {
+        PlayerRef target = Universe.get().getPlayer(targetUuid);
+        if (target == null) {
+            return "Target player is no longer online.";
+        }
+
+        Ref<EntityStore> targetRef = target.getReference();
+        if (targetRef == null || !targetRef.isValid()) {
+            return "Target player is not available.";
+        }
+
+        Store<EntityStore> targetStore = targetRef.getStore();
+
+        // Get target's position
+        TransformComponent targetTransform = targetStore.getComponent(targetRef, TransformComponent.getComponentType());
+        if (targetTransform == null) {
+            return "Could not get target position.";
+        }
+
+        Vector3d targetPos = targetTransform.getPosition();
+
+        // Get target's world
+        EntityStore targetEntityStore = targetStore.getExternalData();
+        World targetWorld = targetEntityStore.getWorld();
+
+        // Teleport the player
+        Teleport teleport = new Teleport(targetWorld, targetPos, new Vector3f(0, 0, 0));
+        store.putComponent(playerRef, Teleport.getComponentType(), teleport);
+
+        return null;
     }
 
     /**
