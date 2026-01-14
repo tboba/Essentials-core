@@ -21,3 +21,30 @@ fallback-format = "&0[&fPlayer&0] &f%player%: %message%"
 OP = "&0[&cAdmin&0] &c%player%&f: %message%"
 Adventure = "&0[&fPlayer&0] &f%player%: %message%"
 Default = "&0[&fPlayer&0] &f%player%: %message%"
+
+[spawn-protection]
+# Enable spawn protection (prevents block breaking/placing/damage)
+enabled = true
+
+# Radius (in blocks) around spawn point to protect
+# Uses the spawn point set with /setspawn
+radius = 16
+
+# Optional Y range for spawn protection (useful for floating islands)
+# Set both to -1 to disable Y restriction (protect all Y levels)
+min-y = -1
+max-y = -1
+
+# Prevent PvP (player vs player damage) in spawn area
+prevent-pvp = true
+
+# Show title messages when entering/leaving spawn
+show-titles = true
+
+# Title shown when entering spawn (leave empty to disable)
+enter-title = "Entering Spawn"
+enter-subtitle = "This is a protected area"
+
+# Title shown when leaving spawn (leave empty to disable)
+exit-title = "Leaving Spawn"
+exit-subtitle = "You can now build"

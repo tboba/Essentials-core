@@ -15,6 +15,7 @@ import java.util.Map;
 public class ConfigManager {
     private static final int DEFAULT_MAX_HOMES = 5;
     private static final String DEFAULT_CHAT_FORMAT = "&7%player%&f: %message%";
+    private static final int DEFAULT_SPAWN_PROTECTION_RADIUS = 16;
 
     private final Path configPath;
     private int maxHomes = DEFAULT_MAX_HOMES;
@@ -23,6 +24,18 @@ public class ConfigManager {
     private boolean chatEnabled = true;
     private String chatFallbackFormat = DEFAULT_CHAT_FORMAT;
     private final LinkedHashMap<String, String> chatFormats = new LinkedHashMap<>();
+
+    // Spawn protection settings
+    private boolean spawnProtectionEnabled = true;
+    private int spawnProtectionRadius = DEFAULT_SPAWN_PROTECTION_RADIUS;
+    private int spawnProtectionMinY = -1;
+    private int spawnProtectionMaxY = -1;
+    private boolean spawnProtectionPreventPvp = true;
+    private boolean spawnProtectionShowTitles = true;
+    private String spawnProtectionEnterTitle = "Entering Spawn";
+    private String spawnProtectionEnterSubtitle = "This is a protected area";
+    private String spawnProtectionExitTitle = "Leaving Spawn";
+    private String spawnProtectionExitSubtitle = "You can now build";
 
     public ConfigManager(@Nonnull Path dataFolder) {
         this.configPath = dataFolder.resolve("config.toml");
@@ -62,8 +75,20 @@ public class ConfigManager {
                 }
             }
 
-            Log.info("Config loaded: maxHomes=" + maxHomes + ", chatEnabled=" + chatEnabled +
-                    ", chatFormats=" + chatFormats.size());
+            // Spawn protection config
+            spawnProtectionEnabled = config.getBoolean("spawn-protection.enabled", () -> true);
+            spawnProtectionRadius = Math.toIntExact(config.getLong("spawn-protection.radius", 
+                    () -> (long) DEFAULT_SPAWN_PROTECTION_RADIUS));
+            spawnProtectionMinY = Math.toIntExact(config.getLong("spawn-protection.min-y", () -> -1L));
+            spawnProtectionMaxY = Math.toIntExact(config.getLong("spawn-protection.max-y", () -> -1L));
+            spawnProtectionPreventPvp = config.getBoolean("spawn-protection.prevent-pvp", () -> true);
+            spawnProtectionShowTitles = config.getBoolean("spawn-protection.show-titles", () -> true);
+            spawnProtectionEnterTitle = config.getString("spawn-protection.enter-title", () -> "Entering Spawn");
+            spawnProtectionEnterSubtitle = config.getString("spawn-protection.enter-subtitle", () -> "This is a protected area");
+            spawnProtectionExitTitle = config.getString("spawn-protection.exit-title", () -> "Leaving Spawn");
+            spawnProtectionExitSubtitle = config.getString("spawn-protection.exit-subtitle", () -> "You can now build");
+
+            Log.info("Config loaded!");
         } catch (IOException e) {
             Log.error("Failed to load config: " + e.getMessage());
             Log.warning("Using default config values.");
@@ -104,5 +129,49 @@ public class ConfigManager {
     @Nonnull
     public Map<String, String> getChatFormats() {
         return chatFormats;
+    }
+
+    public boolean isSpawnProtectionEnabled() {
+        return spawnProtectionEnabled;
+    }
+
+    public int getSpawnProtectionRadius() {
+        return spawnProtectionRadius;
+    }
+
+    public boolean isSpawnProtectionPreventPvp() {
+        return spawnProtectionPreventPvp;
+    }
+
+    public int getSpawnProtectionMinY() {
+        return spawnProtectionMinY;
+    }
+
+    public int getSpawnProtectionMaxY() {
+        return spawnProtectionMaxY;
+    }
+
+    public boolean isSpawnProtectionShowTitles() {
+        return spawnProtectionShowTitles;
+    }
+
+    @Nonnull
+    public String getSpawnProtectionEnterTitle() {
+        return spawnProtectionEnterTitle;
+    }
+
+    @Nonnull
+    public String getSpawnProtectionEnterSubtitle() {
+        return spawnProtectionEnterSubtitle;
+    }
+
+    @Nonnull
+    public String getSpawnProtectionExitTitle() {
+        return spawnProtectionExitTitle;
+    }
+
+    @Nonnull
+    public String getSpawnProtectionExitSubtitle() {
+        return spawnProtectionExitSubtitle;
     }
 }

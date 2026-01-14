@@ -11,9 +11,12 @@ import com.nhulston.essentials.commands.warp.DelWarpCommand;
 import com.nhulston.essentials.commands.warp.SetWarpCommand;
 import com.nhulston.essentials.commands.warp.WarpCommand;
 import com.nhulston.essentials.events.ChatEvent;
+import com.nhulston.essentials.events.SpawnProtectionEvent;
+import com.nhulston.essentials.events.SpawnRegionTitleEvent;
 import com.nhulston.essentials.managers.ChatManager;
 import com.nhulston.essentials.managers.HomeManager;
 import com.nhulston.essentials.managers.SpawnManager;
+import com.nhulston.essentials.managers.SpawnProtectionManager;
 import com.nhulston.essentials.managers.WarpManager;
 import com.nhulston.essentials.util.ConfigManager;
 import com.nhulston.essentials.util.StorageManager;
@@ -28,6 +31,7 @@ public class Essentials extends JavaPlugin {
     private WarpManager warpManager;
     private SpawnManager spawnManager;
     private ChatManager chatManager;
+    private SpawnProtectionManager spawnProtectionManager;
 
     public Essentials(@Nonnull JavaPluginInit init) {
         super(init);
@@ -45,6 +49,7 @@ public class Essentials extends JavaPlugin {
         warpManager = new WarpManager(storageManager);
         spawnManager = new SpawnManager(storageManager);
         chatManager = new ChatManager(configManager);
+        spawnProtectionManager = new SpawnProtectionManager(configManager, storageManager);
     }
 
     @Override
@@ -83,5 +88,7 @@ public class Essentials extends JavaPlugin {
 
     private void registerEvents() {
         new ChatEvent(chatManager).register(getEventRegistry());
+        new SpawnProtectionEvent(spawnProtectionManager).register(getEntityStoreRegistry());
+        new SpawnRegionTitleEvent(spawnProtectionManager, configManager).register(getEntityStoreRegistry());
     }
 }
