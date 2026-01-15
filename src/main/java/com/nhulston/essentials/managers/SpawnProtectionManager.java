@@ -29,10 +29,10 @@ public class SpawnProtectionManager {
     }
 
     /**
-     * Checks if PvP prevention is enabled in spawn area.
+     * Checks if invulnerability is enabled in spawn area.
      */
-    public boolean isPreventPvpEnabled() {
-        return configManager.isSpawnProtectionPreventPvp();
+    public boolean isInvulnerableEnabled() {
+        return configManager.isSpawnProtectionInvulnerable();
     }
 
     /**

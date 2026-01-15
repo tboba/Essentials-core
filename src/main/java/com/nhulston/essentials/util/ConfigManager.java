@@ -57,7 +57,7 @@ public class ConfigManager {
     private int spawnProtectionRadius = DEFAULT_SPAWN_PROTECTION_RADIUS;
     private int spawnProtectionMinY = -1;
     private int spawnProtectionMaxY = -1;
-    private boolean spawnProtectionPreventPvp = true;
+    private boolean spawnProtectionInvulnerable = true;
     private boolean spawnProtectionShowTitles = true;
     private String spawnProtectionEnterTitle = "Entering Spawn";
     private String spawnProtectionEnterSubtitle = "This is a protected area";
@@ -131,7 +131,7 @@ public class ConfigManager {
                     () -> (long) DEFAULT_SPAWN_PROTECTION_RADIUS));
             spawnProtectionMinY = Math.toIntExact(config.getLong("spawn-protection.min-y", () -> -1L));
             spawnProtectionMaxY = Math.toIntExact(config.getLong("spawn-protection.max-y", () -> -1L));
-            spawnProtectionPreventPvp = config.getBoolean("spawn-protection.prevent-pvp", () -> true);
+            spawnProtectionInvulnerable = config.getBoolean("spawn-protection.invulnerable", () -> true);
             spawnProtectionShowTitles = config.getBoolean("spawn-protection.show-titles", () -> true);
             spawnProtectionEnterTitle = config.getString("spawn-protection.enter-title", () -> "Entering Spawn");
             spawnProtectionEnterSubtitle = config.getString("spawn-protection.enter-subtitle", () -> "This is a protected area");
@@ -360,8 +360,8 @@ public class ConfigManager {
         return spawnProtectionRadius;
     }
 
-    public boolean isSpawnProtectionPreventPvp() {
-        return spawnProtectionPreventPvp;
+    public boolean isSpawnProtectionInvulnerable() {
+        return spawnProtectionInvulnerable;
     }
 
     public int getSpawnProtectionMinY() {

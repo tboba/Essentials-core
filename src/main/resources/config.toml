@@ -61,8 +61,8 @@ radius = 16
 min-y = -1
 max-y = -1
 
-# Prevent PvP (player vs player damage) in spawn area
-prevent-pvp = true
+# Make players invulnerable (immune to all damage) in spawn area
+invulnerable = true
 
 # Show title messages when entering/leaving spawn
 show-titles = true

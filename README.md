@@ -55,7 +55,7 @@ Essentials is an all-in-one utility plugin for Hytale server administrators.
 | <code>essentials.build.bypass</code>        | Build when global building is disabled |
 | <code>essentials.spawn.bypass</code>        | Build in spawn protection area         |
 | <code>essentials.kit</code>                 | Open kit selection GUI                 |
-| <code>essentials.kit.\<kitname\></code>     | Access to claim a specific kit         |
+| <code>essentials.kit.kitNameHere</code>     | Access to claim a specific kit         |
 | <code>essentials.kit.create</code>          | Create new kits                        |
 | <code>essentials.kit.delete</code>          | Delete kits                            |
 | <code>essentials.kit.cooldown.bypass</code> | Bypass kit cooldowns                   |
@@ -103,7 +103,7 @@ Players must stand still during the delay or the teleport is canceled. Players w
 *   `spawn-protection.enabled` - Enable spawn area protection
 *   `spawn-protection.radius` - Protection radius in blocks (default: 16)
 *   `spawn-protection.min-y` / `max-y` - Y range limit (-1 to disable)
-*   `spawn-protection.prevent-pvp` - Disable PvP in spawn
+*   `spawn-protection.invulnerable` - Make players invulnerable (immune to all damage) in spawn
 *   `spawn-protection.show-titles` - Show enter/exit titles
 *   `spawn-protection.enter-title` / `enter-subtitle` - Title on enter
 *   `spawn-protection.exit-title` / `exit-subtitle` - Title on exit
@@ -129,7 +129,7 @@ Kits are configured in `kits.toml`. Create kits in-game with `/kit create <name>
 *   `cooldown` - Cooldown in seconds (0 = no cooldown)
 *   `type` - `"add"` to add items to inventory, `"replace"` to clear inventory first
 
-Each kit requires `essentials.kit.<kitname>` permission to claim. Items that don't fit in the intended slot (e.g., armor when already wearing armor) will go to the player's inventory, and only drop on the ground if the inventory is full.
+Each kit requires `essentials.kit.kitNameHere` permission to claim. Items that don't fit in the intended slot (e.g., armor when already wearing armor) will go to the player's inventory, and only drop on the ground if the inventory is full.
 
 # Community & Support
 

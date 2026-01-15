@@ -5,6 +5,7 @@ import com.hypixel.hytale.component.CommandBuffer;
 import com.hypixel.hytale.component.ComponentRegistryProxy;
 import com.hypixel.hytale.component.Ref;
 import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.component.SystemGroup;
 import com.hypixel.hytale.component.query.Query;
 import com.hypixel.hytale.component.system.EntityEventSystem;
 import com.hypixel.hytale.server.core.Message;
@@ -12,6 +13,8 @@ import com.hypixel.hytale.server.core.event.events.ecs.BreakBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.DamageBlockEvent;
 import com.hypixel.hytale.server.core.event.events.ecs.PlaceBlockEvent;
 import com.hypixel.hytale.server.core.modules.entity.damage.Damage;
+import com.hypixel.hytale.server.core.modules.entity.damage.DamageEventSystem;
+import com.hypixel.hytale.server.core.modules.entity.damage.DamageModule;
 import com.hypixel.hytale.server.core.universe.PlayerRef;
 import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
 import com.nhulston.essentials.managers.SpawnProtectionManager;
@@ -23,6 +26,7 @@ import javax.annotation.Nonnull;
 public class SpawnProtectionEvent {
     private static final String PROTECTED_MESSAGE = "This area is protected.";
     private static final String PROTECTED_COLOR = "#FF5555";
+    private static final String PVP_MESSAGE = "PvP is disabled in spawn.";
 
     private final SpawnProtectionManager spawnProtectionManager;
 
@@ -33,6 +37,12 @@ public class SpawnProtectionEvent {
     private static void sendProtectedMessage(PlayerRef playerRef) {
         if (playerRef != null) {
             playerRef.sendMessage(Message.raw(PROTECTED_MESSAGE).color(PROTECTED_COLOR));
+        }
+    }
+
+    private static void sendPvpMessage(PlayerRef playerRef) {
+        if (playerRef != null) {
+            playerRef.sendMessage(Message.raw(PVP_MESSAGE).color(PROTECTED_COLOR));
         }
     }
 
@@ -50,9 +60,9 @@ public class SpawnProtectionEvent {
         // Register block damage protection (mining progress)
         registry.registerSystem(new DamageBlockProtectionSystem(spawnProtectionManager));
 
-        // Register PvP protection
-        if (spawnProtectionManager.isPreventPvpEnabled()) {
-            registry.registerSystem(new PvpProtectionSystem(spawnProtectionManager));
+        // Register PvP protection using FilterDamageGroup
+        if (spawnProtectionManager.isInvulnerableEnabled()) {
+            registry.registerSystem(new SpawnDamageFilterSystem(spawnProtectionManager));
         }
 
         Log.info("Spawn protection enabled.");
@@ -184,16 +194,22 @@ public class SpawnProtectionEvent {
     }
 
     /**
-     * Prevents PvP damage in spawn area.
+     * Filters damage in spawn area by running in the FilterDamageGroup.
+     * This should run before damage is actually applied.
      */
-    private static class PvpProtectionSystem 
-            extends EntityEventSystem<EntityStore, Damage> {
+    private static class SpawnDamageFilterSystem extends DamageEventSystem {
         
         private final SpawnProtectionManager manager;
 
-        PvpProtectionSystem(SpawnProtectionManager manager) {
-            super(Damage.class);
+        SpawnDamageFilterSystem(SpawnProtectionManager manager) {
+            super();
             this.manager = manager;
+        }
+
+        @Override
+        public SystemGroup<EntityStore> getGroup() {
+            // Use the FilterDamageGroup to run in the filtering phase
+            return DamageModule.get().getFilterDamageGroup();
         }
 
         @Override
@@ -216,7 +232,12 @@ public class SpawnProtectionEvent {
                 return;
             }
 
-            // Check if the attacker is a player
+            // Check if victim is in protected area
+            if (!manager.isInProtectedArea(victimRef.getTransform().getPosition())) {
+                return;
+            }
+
+            // Check if the attacker is a player (only block PvP, not PvE)
             Damage.Source source = event.getSource();
             if (!(source instanceof Damage.EntitySource entitySource)) {
                 return;
@@ -224,19 +245,19 @@ public class SpawnProtectionEvent {
 
             // Get attacker's PlayerRef
             Ref<EntityStore> attackerRef = entitySource.getRef();
-            PlayerRef attackerPlayerRef = store.getComponent(attackerRef, PlayerRef.getComponentType());
-            if (attackerPlayerRef == null) {
-                return; // Attacker is not a player (NPC, etc.)
-            }
-
-            // Check if victim is in protected area
-            if (!manager.isInProtectedArea(victimRef.getTransform().getPosition())) {
+            if (!attackerRef.isValid()) {
                 return;
             }
+            
+            PlayerRef attackerPlayerRef = store.getComponent(attackerRef, PlayerRef.getComponentType());
+            if (attackerPlayerRef == null) {
+                return; // Attacker is not a player (NPC, mob, etc.) - allow damage
+            }
 
-            // Cancel PvP damage in spawn and notify attacker
+            // Both are players, victim is in spawn - cancel PvP damage
             event.setCancelled(true);
-            sendProtectedMessage(attackerPlayerRef);
+            event.setAmount(0);
+            sendPvpMessage(attackerPlayerRef);
         }
     }
 }
