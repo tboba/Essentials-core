@@ -91,7 +91,18 @@ public class ConfigManager {
         }
 
         try {
-            TomlParseResult config = Toml.parse(configPath);
+            // Read file as bytes first to handle potential BOM
+            byte[] bytes = Files.readAllBytes(configPath);
+            String configContent;
+            
+            // Check for UTF-8 BOM and skip it if present
+            if (bytes.length >= 3 && bytes[0] == (byte) 0xEF && bytes[1] == (byte) 0xBB && bytes[2] == (byte) 0xBF) {
+                configContent = new String(bytes, 3, bytes.length - 3, StandardCharsets.UTF_8);
+            } else {
+                configContent = new String(bytes, StandardCharsets.UTF_8);
+            }
+            
+            TomlParseResult config = Toml.parse(configContent);
 
             if (config.hasErrors()) {
                 config.errors().forEach(error -> Log.error("Config error: " + error.toString()));
@@ -100,7 +111,7 @@ public class ConfigManager {
             }
 
             // Homes config
-            maxHomes = Math.toIntExact(config.getLong("homes.max-homes", () -> (long) DEFAULT_MAX_HOMES));
+            maxHomes = getIntSafe(config, "homes.max-homes", DEFAULT_MAX_HOMES);
 
             // Chat config
             chatEnabled = config.getBoolean("chat.enabled", () -> true);
@@ -127,14 +138,13 @@ public class ConfigManager {
             deathSpawnEnabled = config.getBoolean("spawn.death-spawn", () -> true);
 
             // Teleport config
-            teleportDelay = Math.toIntExact(config.getLong("teleport.delay", () -> (long) DEFAULT_TELEPORT_DELAY));
+            teleportDelay = getIntSafe(config, "teleport.delay", DEFAULT_TELEPORT_DELAY);
 
             // Spawn protection config
             spawnProtectionEnabled = config.getBoolean("spawn-protection.enabled", () -> true);
-            spawnProtectionRadius = Math.toIntExact(config.getLong("spawn-protection.radius", 
-                    () -> (long) DEFAULT_SPAWN_PROTECTION_RADIUS));
-            spawnProtectionMinY = Math.toIntExact(config.getLong("spawn-protection.min-y", () -> -1L));
-            spawnProtectionMaxY = Math.toIntExact(config.getLong("spawn-protection.max-y", () -> -1L));
+            spawnProtectionRadius = getIntSafe(config, "spawn-protection.radius", DEFAULT_SPAWN_PROTECTION_RADIUS);
+            spawnProtectionMinY = getIntSafe(config, "spawn-protection.min-y", -1);
+            spawnProtectionMaxY = getIntSafe(config, "spawn-protection.max-y", -1);
             spawnProtectionInvulnerable = config.getBoolean("spawn-protection.invulnerable", () -> true);
             spawnProtectionShowTitles = config.getBoolean("spawn-protection.show-titles", () -> true);
             spawnProtectionEnterTitle = config.getString("spawn-protection.enter-title", () -> "Entering Spawn");
@@ -144,8 +154,8 @@ public class ConfigManager {
 
             // RTP config
             rtpWorld = config.getString("rtp.world", () -> DEFAULT_RTP_WORLD);
-            rtpRadius = Math.toIntExact(config.getLong("rtp.radius", () -> (long) DEFAULT_RTP_RADIUS));
-            rtpCooldown = Math.toIntExact(config.getLong("rtp.cooldown", () -> (long) DEFAULT_RTP_COOLDOWN));
+            rtpRadius = getIntSafe(config, "rtp.radius", DEFAULT_RTP_RADIUS);
+            rtpCooldown = getIntSafe(config, "rtp.cooldown", DEFAULT_RTP_COOLDOWN);
 
             // MOTD config
             motdEnabled = config.getBoolean("motd.enabled", () -> true);
@@ -153,11 +163,14 @@ public class ConfigManager {
 
             // Sleep config
             sleepEnabled = config.getBoolean("sleep.enabled", () -> true);
-            sleepPercentage = Math.toIntExact(config.getLong("sleep.percentage", () -> 20L));
+            sleepPercentage = getIntSafe(config, "sleep.percentage", 20);
 
             Log.info("Config loaded!");
-        } catch (IOException e) {
-            Log.error("Failed to load config: " + e.getMessage());
+        } catch (Exception e) {
+            Log.error("Failed to load config: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            if (e.getCause() != null) {
+                Log.error("Caused by: " + e.getCause().getClass().getSimpleName() + " - " + e.getCause().getMessage());
+            }
             Log.warning("Using default config values.");
         }
     }
@@ -169,11 +182,21 @@ public class ConfigManager {
     private void migrateConfig() {
         String defaultConfig = loadDefaultConfigFromResources();
         if (defaultConfig == null) {
+            Log.warning("Could not load default config from resources for migration.");
             return;
         }
 
         try {
-            String userConfig = Files.readString(configPath, StandardCharsets.UTF_8);
+            // Read user config as bytes first to handle potential BOM
+            byte[] bytes = Files.readAllBytes(configPath);
+            String userConfig;
+            
+            // Check for UTF-8 BOM and skip it if present
+            if (bytes.length >= 3 && bytes[0] == (byte) 0xEF && bytes[1] == (byte) 0xBB && bytes[2] == (byte) 0xBF) {
+                userConfig = new String(bytes, 3, bytes.length - 3, StandardCharsets.UTF_8);
+            } else {
+                userConfig = new String(bytes, StandardCharsets.UTF_8);
+            }
             
             // Find sections in both configs
             Set<String> userSections = findTopLevelSections(userConfig);
@@ -206,8 +229,8 @@ public class ConfigManager {
             Files.writeString(configPath, newConfig.toString(), StandardCharsets.UTF_8);
             Log.info("Config migrated with " + missingSections.size() + " new section(s).");
             
-        } catch (IOException e) {
-            Log.warning("Failed to migrate config: " + e.getMessage());
+        } catch (Exception e) {
+            Log.warning("Config migration skipped: " + e.getClass().getName() + " - " + e.getMessage());
         }
     }
 
@@ -302,6 +325,18 @@ public class ConfigManager {
         }
         
         return sections;
+    }
+
+    /**
+     * Safely gets an integer value from the config, with fallback to default.
+     */
+    private int getIntSafe(@Nonnull TomlParseResult config, @Nonnull String key, int defaultValue) {
+        try {
+            Long value = config.getLong(key);
+            return value != null ? Math.toIntExact(value) : defaultValue;
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 
     private void createDefault() {
