@@ -8,6 +8,7 @@ import java.util.Map;
 public class PlayerData {
     private Map<String, Home> homes;
     private Map<String, Long> kitCooldowns;  // kitId -> lastUsedTimestamp
+    private long lastActivity = System.currentTimeMillis();
 
     public PlayerData() {
         this.homes = new HashMap<>();
@@ -64,4 +65,13 @@ public class PlayerData {
         kitCooldowns.put(kitId.toLowerCase(), timestamp);
     }
 
+    // Activity methods
+
+    public long getLastActivity() {
+        return lastActivity;
+    }
+
+    public void updateActivity() {
+        lastActivity = System.currentTimeMillis();
+    }
 }

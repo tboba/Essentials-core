@@ -1,5 +1,6 @@
 package com.nhulston.essentials;
 
+import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.nhulston.essentials.commands.back.BackCommand;
@@ -23,6 +24,7 @@ import com.nhulston.essentials.commands.tpa.TpacceptCommand;
 import com.nhulston.essentials.commands.warp.DelWarpCommand;
 import com.nhulston.essentials.commands.warp.SetWarpCommand;
 import com.nhulston.essentials.commands.warp.WarpCommand;
+import com.nhulston.essentials.events.AfkEvent;
 import com.nhulston.essentials.events.BuildProtectionEvent;
 import com.nhulston.essentials.events.ChatEvent;
 import com.nhulston.essentials.events.DeathLocationEvent;
@@ -38,23 +40,27 @@ import com.nhulston.essentials.managers.BackManager;
 import com.nhulston.essentials.managers.ChatManager;
 import com.nhulston.essentials.managers.HomeManager;
 import com.nhulston.essentials.managers.KitManager;
+import com.nhulston.essentials.managers.PlayerActivityManager;
 import com.nhulston.essentials.managers.SpawnManager;
 import com.nhulston.essentials.managers.SpawnProtectionManager;
 import com.nhulston.essentials.managers.TeleportManager;
 import com.nhulston.essentials.managers.TpaManager;
 import com.nhulston.essentials.managers.WarpManager;
+import com.nhulston.essentials.tasks.PlayerActivityTask;
 import com.nhulston.essentials.util.ConfigManager;
 import com.nhulston.essentials.util.StorageManager;
 import com.nhulston.essentials.util.Log;
 import com.nhulston.essentials.util.VersionChecker;
 
 import javax.annotation.Nonnull;
+import java.util.concurrent.TimeUnit;
 
 public class Essentials extends JavaPlugin {
     public static final String VERSION = "1.4.0";
     
     private ConfigManager configManager;
     private StorageManager storageManager;
+    private PlayerActivityManager playerActivityManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
     private SpawnManager spawnManager;
@@ -78,6 +84,7 @@ public class Essentials extends JavaPlugin {
         configManager = new ConfigManager(getDataDirectory());
         storageManager = new StorageManager(getDataDirectory());
 
+        playerActivityManager = new PlayerActivityManager(storageManager, configManager);
         homeManager = new HomeManager(storageManager, configManager);
         warpManager = new WarpManager(storageManager);
         spawnManager = new SpawnManager(storageManager);
@@ -94,6 +101,7 @@ public class Essentials extends JavaPlugin {
     protected void start() {
         registerCommands();
         registerEvents();
+        registerTasks();
         
         // Check for updates asynchronously
         versionChecker.checkForUpdatesAsync();
@@ -184,6 +192,10 @@ public class Essentials extends JavaPlugin {
         spawnTeleportEvent.registerEvents(getEventRegistry());
         spawnTeleportEvent.registerSystems(getEntityStoreRegistry());
 
+        AfkEvent afkEvent = new AfkEvent(storageManager);
+        afkEvent.registerEvents(getEventRegistry());
+        afkEvent.registerSystems(getEntityStoreRegistry());
+
         // Death location tracking for /back
         new DeathLocationEvent(backManager).register(getEntityStoreRegistry());
 
@@ -199,4 +211,11 @@ public class Essentials extends JavaPlugin {
         // Player disconnect cleanup
         new PlayerQuitEvent(storageManager, tpaManager, teleportManager, backManager).register(getEventRegistry());
     }
+
+    private void registerTasks() {
+        if (configManager.isAfkKickEnabled()) {
+            HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(new PlayerActivityTask(playerActivityManager), 0, 1, TimeUnit.SECONDS);
+        }
+    }
+
 }
