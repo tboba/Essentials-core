@@ -23,12 +23,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ConfigManager {
-    private static final int DEFAULT_MAX_HOMES = 5;
     private static final String DEFAULT_CHAT_FORMAT = "&7%player%&f: %message%";
     private static final int DEFAULT_SPAWN_PROTECTION_RADIUS = 16;
     private static final int DEFAULT_TELEPORT_DELAY = 3;
-    private static final String DEFAULT_RTP_WORLD = "default";
-    private static final int DEFAULT_RTP_RADIUS = 5000;
     private static final int DEFAULT_RTP_COOLDOWN = 300;
 
     // Pattern to match section headers like [section], [section-name], or [section.subsection]
@@ -72,9 +69,9 @@ public class ConfigManager {
     private String spawnProtectionExitSubtitle = "You can now build";
 
     // RTP settings
-    private String rtpWorld = DEFAULT_RTP_WORLD;
-    private int rtpRadius = DEFAULT_RTP_RADIUS;
     private int rtpCooldown = DEFAULT_RTP_COOLDOWN;
+    private String rtpDefaultWorld = "default";
+    private final HashMap<String, Integer> rtpWorlds = new HashMap<>();
 
     // MOTD settings
     private boolean motdEnabled = true;
@@ -180,9 +177,21 @@ public class ConfigManager {
             spawnProtectionExitSubtitle = config.getString("spawn-protection.exit-subtitle", () -> "You can now build");
 
             // RTP config
-            rtpWorld = config.getString("rtp.world", () -> DEFAULT_RTP_WORLD);
-            rtpRadius = getIntSafe(config, "rtp.radius", DEFAULT_RTP_RADIUS);
             rtpCooldown = getIntSafe(config, "rtp.cooldown", DEFAULT_RTP_COOLDOWN);
+            
+            rtpWorlds.clear();
+            TomlTable rtpWorldsTable = config.getTable("rtp.worlds");
+            if (rtpWorldsTable != null) {
+                for (String worldName : rtpWorldsTable.keySet()) {
+                    Long radius = rtpWorldsTable.getLong(worldName);
+                    if (radius != null) {
+                        rtpWorlds.put(worldName, radius.intValue());
+                    }
+                }
+            }
+
+            String defaultWorld = config.getString("rtp.default-world");
+            rtpDefaultWorld = defaultWorld != null ? defaultWorld : "default";
 
             // MOTD config
             motdEnabled = config.getBoolean("motd.enabled", () -> true);
@@ -493,17 +502,21 @@ public class ConfigManager {
         return spawnProtectionExitSubtitle;
     }
 
-    @Nonnull
-    public String getRtpWorld() {
-        return rtpWorld;
-    }
-
-    public int getRtpRadius() {
-        return rtpRadius;
-    }
-
     public int getRtpCooldown() {
         return rtpCooldown;
+    }
+
+    @Nonnull
+    public String getRtpDefaultWorld() {
+        return rtpDefaultWorld;
+    }
+
+    /**
+     * Gets the RTP radius for a specific world, or null if the world is not configured.
+     */
+    @Nullable
+    public Integer getRtpRadius(@Nonnull String worldName) {
+        return rtpWorlds.get(worldName);
     }
 
     public boolean isMotdEnabled() {

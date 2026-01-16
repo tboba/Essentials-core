@@ -114,14 +114,22 @@ percentage = 20
 [rtp]
 # Random teleport settings
 
-# World to teleport to (must be loaded)
-world = "default"
-
-# Maximum radius from 0,0 for random teleport
-radius = 5000
-
-# Cooldown in seconds between RTP uses
+# Cooldown in seconds between RTP uses (global)
 cooldown = 300
+
+# Default world to teleport to if the player's current world is not in the worlds list
+# If this world is also not in the list, RTP will be disabled for that player
+default-world = "default"
+
+# Per-world RTP settings
+# Each world name maps to its radius from 0,0
+# Players will be teleported within their current world if it's listed here,
+# otherwise they'll be sent to the default-world above
+[rtp.worlds]
+default = 5000
+# Add more worlds here with their radius, e.g.:
+# survival = 10000
+# resource = 3000
 
 [shout]
 # Prefix prepended to all /shout messages
