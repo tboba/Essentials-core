@@ -76,6 +76,10 @@ public class ConfigManager {
     private int rtpRadius = DEFAULT_RTP_RADIUS;
     private int rtpCooldown = DEFAULT_RTP_COOLDOWN;
 
+    // AFK settings
+    private long afkKickTime = 0L;
+    private String afkKickMessage = "You have been kicked for idling more than %period% seconds!";
+
     // MOTD settings
     private boolean motdEnabled = true;
     private String motdMessage = "&6Welcome to the server, &e%player%&6!";
@@ -183,6 +187,10 @@ public class ConfigManager {
             rtpWorld = config.getString("rtp.world", () -> DEFAULT_RTP_WORLD);
             rtpRadius = getIntSafe(config, "rtp.radius", DEFAULT_RTP_RADIUS);
             rtpCooldown = getIntSafe(config, "rtp.cooldown", DEFAULT_RTP_COOLDOWN);
+
+            afkKickTime = getIntSafe(config, "afk.threshold", 0);
+            afkKickMessage = config.getString("afk.kick-message", () -> "You have been kicked for idling more than {0} seconds!")
+                    .replace("%period%", String.valueOf(afkKickTime));
 
             // MOTD config
             motdEnabled = config.getBoolean("motd.enabled", () -> true);
@@ -504,6 +512,18 @@ public class ConfigManager {
 
     public int getRtpCooldown() {
         return rtpCooldown;
+    }
+
+    public boolean isAfkKickEnabled() {
+        return afkKickTime > 0;
+    }
+
+    public Long getAfkKickTime() {
+        return afkKickTime;
+    }
+
+    public String getAfkKickMessage() {
+        return afkKickMessage;
     }
 
     public boolean isMotdEnabled() {
