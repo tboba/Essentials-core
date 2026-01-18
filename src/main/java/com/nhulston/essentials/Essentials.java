@@ -1,9 +1,15 @@
 package com.nhulston.essentials;
 
-import com.hypixel.hytale.server.core.HytaleServer;
+import com.hypixel.hytale.component.ComponentType;
+import com.hypixel.hytale.component.Ref;
+import com.hypixel.hytale.component.Store;
+import com.hypixel.hytale.server.core.event.events.player.PlayerReadyEvent;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit;
 import com.hypixel.hytale.server.core.universe.world.events.AllWorldsLoadedEvent;
+import com.hypixel.hytale.server.core.universe.world.storage.EntityStore;
+import com.nhulston.essentials.afk.AfkComponent;
+import com.nhulston.essentials.afk.AfkSystem;
 import com.nhulston.essentials.commands.back.BackCommand;
 import com.nhulston.essentials.commands.essentials.EssentialsCommand;
 import com.nhulston.essentials.commands.freecam.FreecamCommand;
@@ -19,45 +25,23 @@ import com.nhulston.essentials.commands.msg.ReplyCommand;
 import com.nhulston.essentials.commands.repair.RepairCommand;
 import com.nhulston.essentials.commands.rtp.RtpCommand;
 import com.nhulston.essentials.commands.shout.ShoutCommand;
-import com.nhulston.essentials.commands.top.TopCommand;
-import com.nhulston.essentials.commands.tphere.TphereCommand;
 import com.nhulston.essentials.commands.spawn.SetSpawnCommand;
 import com.nhulston.essentials.commands.spawn.SpawnCommand;
+import com.nhulston.essentials.commands.top.TopCommand;
 import com.nhulston.essentials.commands.tpa.TpaCommand;
 import com.nhulston.essentials.commands.tpa.TpacceptCommand;
+import com.nhulston.essentials.commands.tphere.TphereCommand;
 import com.nhulston.essentials.commands.warp.DelWarpCommand;
 import com.nhulston.essentials.commands.warp.SetWarpCommand;
 import com.nhulston.essentials.commands.warp.WarpCommand;
-import com.nhulston.essentials.events.AfkEvent;
-import com.nhulston.essentials.events.BuildProtectionEvent;
-import com.nhulston.essentials.events.ChatEvent;
-import com.nhulston.essentials.events.DeathLocationEvent;
-import com.nhulston.essentials.events.MotdEvent;
-import com.nhulston.essentials.events.PlayerQuitEvent;
-import com.nhulston.essentials.events.SpawnProtectionEvent;
-import com.nhulston.essentials.events.SpawnRegionTitleEvent;
-import com.nhulston.essentials.events.SpawnTeleportEvent;
-import com.nhulston.essentials.events.TeleportMovementEvent;
-import com.nhulston.essentials.events.SleepPercentageEvent;
-import com.nhulston.essentials.events.UpdateNotifyEvent;
-import com.nhulston.essentials.managers.BackManager;
-import com.nhulston.essentials.managers.ChatManager;
-import com.nhulston.essentials.managers.HomeManager;
-import com.nhulston.essentials.managers.KitManager;
-import com.nhulston.essentials.managers.PlayerActivityManager;
-import com.nhulston.essentials.managers.SpawnManager;
-import com.nhulston.essentials.managers.SpawnProtectionManager;
-import com.nhulston.essentials.managers.TeleportManager;
-import com.nhulston.essentials.managers.TpaManager;
-import com.nhulston.essentials.managers.WarpManager;
-import com.nhulston.essentials.tasks.PlayerActivityTask;
+import com.nhulston.essentials.events.*;
+import com.nhulston.essentials.managers.*;
 import com.nhulston.essentials.util.ConfigManager;
-import com.nhulston.essentials.util.StorageManager;
 import com.nhulston.essentials.util.Log;
+import com.nhulston.essentials.util.StorageManager;
 import com.nhulston.essentials.util.VersionChecker;
 
 import javax.annotation.Nonnull;
-import java.util.concurrent.TimeUnit;
 
 public class Essentials extends JavaPlugin {
     public static final String VERSION = "1.5.0";
@@ -66,7 +50,6 @@ public class Essentials extends JavaPlugin {
     
     private ConfigManager configManager;
     private StorageManager storageManager;
-    private PlayerActivityManager playerActivityManager;
     private HomeManager homeManager;
     private WarpManager warpManager;
     private SpawnManager spawnManager;
@@ -77,6 +60,8 @@ public class Essentials extends JavaPlugin {
     private KitManager kitManager;
     private BackManager backManager;
     private VersionChecker versionChecker;
+
+    private ComponentType<EntityStore, AfkComponent> afkComponent;
 
     public Essentials(@Nonnull JavaPluginInit init) {
         super(init);
@@ -91,7 +76,6 @@ public class Essentials extends JavaPlugin {
         configManager = new ConfigManager(getDataDirectory());
         storageManager = new StorageManager(getDataDirectory());
 
-        playerActivityManager = new PlayerActivityManager(storageManager, configManager);
         homeManager = new HomeManager(storageManager, configManager);
         warpManager = new WarpManager(storageManager);
         spawnManager = new SpawnManager(storageManager);
@@ -102,13 +86,26 @@ public class Essentials extends JavaPlugin {
         kitManager = new KitManager(getDataDirectory(), storageManager);
         backManager = new BackManager();
         versionChecker = new VersionChecker(VERSION);
+
+        this.afkComponent = this.getEntityStoreRegistry()
+                .registerComponent(AfkComponent.class, AfkComponent::new);
+
+        if (configManager.isAfkKickEnabled()) {
+            this.getEntityStoreRegistry().registerSystem(new AfkSystem(configManager));
+            this.getEventRegistry().registerGlobal(PlayerReadyEvent.class, event -> {
+                Ref<EntityStore> ref = event.getPlayerRef();
+                if (!ref.isValid()) return;
+
+                Store<EntityStore> store = ref.getStore();
+                store.addComponent(ref, Essentials.getInstance().getAfkComponentType(), new AfkComponent());
+            });
+        }
     }
 
     @Override
     protected void start() {
         registerCommands();
         registerEvents();
-        registerTasks();
         
         // Check for updates asynchronously
         versionChecker.checkForUpdatesAsync();
@@ -208,10 +205,6 @@ public class Essentials extends JavaPlugin {
         spawnTeleportEvent.registerEvents(getEventRegistry());
         spawnTeleportEvent.registerSystems(getEntityStoreRegistry());
 
-        AfkEvent afkEvent = new AfkEvent(storageManager);
-        afkEvent.registerEvents(getEventRegistry());
-        afkEvent.registerSystems(getEntityStoreRegistry());
-
         // Death location tracking for /back
         new DeathLocationEvent(backManager).register(getEntityStoreRegistry());
 
@@ -251,10 +244,8 @@ public class Essentials extends JavaPlugin {
         Log.info("All configurations reloaded.");
     }
 
-    private void registerTasks() {
-        if (configManager.isAfkKickEnabled()) {
-            HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(new PlayerActivityTask(playerActivityManager), 0, 1, TimeUnit.SECONDS);
-        }
+    public ComponentType<EntityStore, AfkComponent> getAfkComponentType() {
+        return afkComponent;
     }
 
 }
