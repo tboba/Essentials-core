@@ -20,6 +20,7 @@ import com.nhulston.essentials.util.TeleportUtil;
 
 import javax.annotation.Nonnull;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -65,8 +66,24 @@ public class RtpCommand extends AbstractPlayerCommand {
             }
         }
 
-        String rtpWorldName = configManager.getRtpWorld();
-        int radius = configManager.getRtpRadius();
+        // Determine which world to RTP in
+        String currentWorldName = world.getName();
+        String rtpWorldName;
+        Integer radius = configManager.getRtpRadius(currentWorldName);
+        
+        if (radius != null) {
+            // Player's current world is configured for RTP
+            rtpWorldName = currentWorldName;
+        } else {
+            // Fall back to default world
+            rtpWorldName = configManager.getRtpDefaultWorld();
+            radius = configManager.getRtpRadius(rtpWorldName);
+            
+            if (radius == null) {
+                Msg.fail(context, "RTP is not enabled in this world.");
+                return;
+            }
+        }
 
         // Verify the world exists
         World rtpWorld = Universe.get().getWorld(rtpWorldName);
@@ -75,14 +92,56 @@ public class RtpCommand extends AbstractPlayerCommand {
             return;
         }
 
-        // Try up to MAX_ATTEMPTS random locations
+        boolean isCrossWorld = !rtpWorldName.equals(currentWorldName);
+        
+        if (isCrossWorld) {
+            // Cross-world RTP - use async chunk loading
+            // Capture start position now, on the correct thread
+            Vector3d startPosition = playerRef.getTransform().getPosition().clone();
+
+            findSafeLocationAsync(rtpWorld, radius, 0)
+                .thenAccept(result -> {
+                    if (result == null) {
+                        Msg.fail(playerRef, "Could not find a safe location after " + MAX_ATTEMPTS + " attempts. Try again.");
+                        return;
+                    }
+                    
+                    // Execute teleport back on the player's current world thread
+                    world.execute(() -> {
+                        teleportManager.queueTeleport(
+                            playerRef, ref, store, startPosition,
+                                rtpWorldName, result.x, result.y, result.z,
+                            0.0f, 0.0f,
+                            "Randomly teleported!",
+                            () -> {
+                                data.setLastRtpTime(System.currentTimeMillis());
+                                storageManager.savePlayerData(playerUuid);
+                            }
+                        );
+                    });
+                })
+                .exceptionally(ex -> {
+                    Msg.fail(playerRef, "RTP failed. Please try again.");
+                    return null;
+                });
+        } else {
+            // Same-world RTP - use sync chunk access
+            findSafeLocationSync(rtpWorld, radius, playerRef, ref, store, rtpWorldName, data, playerUuid);
+        }
+    }
+
+    /**
+     * Synchronously finds a safe RTP location (for same-world teleports).
+     */
+    private void findSafeLocationSync(World rtpWorld, int radius, PlayerRef playerRef, 
+                                       Ref<EntityStore> ref, Store<EntityStore> store,
+                                       String rtpWorldName, PlayerData data, UUID playerUuid) {
         ThreadLocalRandom random = ThreadLocalRandom.current();
         
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             double x = random.nextDouble(-radius, radius);
             double z = random.nextDouble(-radius, radius);
 
-            // Find safe Y position, searching from top down
             Double safeY = TeleportUtil.findSafeRtpY(rtpWorld, x, z);
             
             if (safeY != null) {
@@ -91,10 +150,9 @@ public class RtpCommand extends AbstractPlayerCommand {
                 teleportManager.queueTeleport(
                     playerRef, ref, store, startPosition,
                     rtpWorldName, x, safeY, z,
-                    0.0f, 0.0f, // yaw, pitch - face forward
+                    0.0f, 0.0f,
                     "Randomly teleported!",
                     () -> {
-                        // Set cooldown only on successful teleport
                         data.setLastRtpTime(System.currentTimeMillis());
                         storageManager.savePlayerData(playerUuid);
                     }
@@ -103,7 +161,42 @@ public class RtpCommand extends AbstractPlayerCommand {
             }
         }
 
-        // All attempts failed
-        Msg.fail(context, "Could not find a safe location after " + MAX_ATTEMPTS + " attempts. Try again.");
+        Msg.fail(playerRef, "Could not find a safe location after " + MAX_ATTEMPTS + " attempts. Try again.");
+    }
+
+    /**
+     * Asynchronously finds a safe RTP location (for cross-world teleports).
+     * Recursively tries up to MAX_ATTEMPTS locations.
+     */
+    private CompletableFuture<RtpLocation> findSafeLocationAsync(World rtpWorld, int radius, int attempt) {
+        if (attempt >= MAX_ATTEMPTS) {
+            return CompletableFuture.completedFuture(null);
+        }
+
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        double x = random.nextDouble(-radius, radius);
+        double z = random.nextDouble(-radius, radius);
+
+        return TeleportUtil.findSafeRtpYAsync(rtpWorld, x, z)
+            .thenCompose(safeY -> {
+                if (safeY != null) {
+                    return CompletableFuture.completedFuture(new RtpLocation(x, safeY, z));
+                }
+                // Try next attempt
+                return findSafeLocationAsync(rtpWorld, radius, attempt + 1);
+            });
+    }
+
+    /**
+     * Simple data class to hold RTP coordinates.
+     */
+    private static class RtpLocation {
+        final double x, y, z;
+        
+        RtpLocation(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
     }
 }

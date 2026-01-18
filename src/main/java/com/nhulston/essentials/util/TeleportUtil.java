@@ -20,6 +20,7 @@ import com.nhulston.essentials.models.Spawn;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.concurrent.CompletableFuture;
 
 public final class TeleportUtil {
 
@@ -370,6 +371,70 @@ public final class TeleportUtil {
             return null; // Chunk not loaded
         }
 
+        // Search from top down to find first solid block
+        int startY = 200;
+        int minY = 0;
+        
+        for (int checkY = startY; checkY >= minY; checkY--) {
+            // Check for fluid at this level - if found, abort this location
+            if (hasFluid(chunk, blockX, checkY, blockZ)) {
+                return null; // Hit water/lava, this location is no good
+            }
+            
+            // Check if this block is solid (ground)
+            if (isSolidBlock(chunk, blockX, checkY, blockZ)) {
+                // Found ground! Player spawns at checkY + 1
+                int spawnY = checkY + 1;
+                
+                // Verify there's space for player (2 blocks) and no fluid
+                if (hasFluid(chunk, blockX, spawnY, blockZ) || 
+                    hasFluid(chunk, blockX, spawnY + 1, blockZ)) {
+                    return null; // Fluid above ground
+                }
+                
+                // Make sure head space isn't blocked
+                if (isSolidBlock(chunk, blockX, spawnY + 1, blockZ)) {
+                    // Only 1 block of space, keep searching down
+                    continue;
+                }
+                
+                return (double) spawnY;
+            }
+        }
+
+        return null; // No solid ground found
+    }
+
+    /**
+     * Asynchronously finds a safe Y position for RTP by searching from top down.
+     * Uses getChunkAsync to safely access chunks from any thread.
+     *
+     * @param world The world to check
+     * @param x X coordinate
+     * @param z Z coordinate
+     * @return CompletableFuture with safe Y coordinate (one above ground), or null if unsafe
+     */
+    @Nonnull
+    public static CompletableFuture<Double> findSafeRtpYAsync(@Nonnull World world, double x, double z) {
+        int blockX = (int) Math.floor(x);
+        int blockZ = (int) Math.floor(z);
+
+        long chunkIndex = ChunkUtil.indexChunkFromBlock(blockX, blockZ);
+        
+        return world.getChunkAsync(chunkIndex).thenApply(chunk -> {
+            if (chunk == null) {
+                return null; // Chunk not loaded
+            }
+            return findSafeRtpYFromChunk(chunk, blockX, blockZ);
+        });
+    }
+
+    /**
+     * Finds a safe Y position using an already-loaded chunk.
+     * Internal helper for both sync and async methods.
+     */
+    @Nullable
+    private static Double findSafeRtpYFromChunk(@Nonnull WorldChunk chunk, int blockX, int blockZ) {
         // Search from top down to find first solid block
         int startY = 200;
         int minY = 0;
