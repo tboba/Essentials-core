@@ -87,19 +87,7 @@ public class Essentials extends JavaPlugin {
         backManager = new BackManager();
         versionChecker = new VersionChecker(VERSION);
 
-        this.afkComponent = this.getEntityStoreRegistry()
-                .registerComponent(AfkComponent.class, AfkComponent::new);
-
-        if (configManager.isAfkKickEnabled()) {
-            this.getEntityStoreRegistry().registerSystem(new AfkSystem(configManager));
-            this.getEventRegistry().registerGlobal(PlayerReadyEvent.class, event -> {
-                Ref<EntityStore> ref = event.getPlayerRef();
-                if (!ref.isValid()) return;
-
-                Store<EntityStore> store = ref.getStore();
-                store.addComponent(ref, Essentials.getInstance().getAfkComponentType(), new AfkComponent());
-            });
-        }
+        registerAfkComponent();
     }
 
     @Override
@@ -242,6 +230,22 @@ public class Essentials extends JavaPlugin {
         configManager.reload();
         kitManager.reload();
         Log.info("All configurations reloaded.");
+    }
+
+    private void registerAfkComponent() {
+        this.afkComponent = this.getEntityStoreRegistry()
+                .registerComponent(AfkComponent.class, AfkComponent::new);
+
+        if (configManager.isAfkKickEnabled()) {
+            this.getEntityStoreRegistry().registerSystem(new AfkSystem(configManager));
+            this.getEventRegistry().registerGlobal(PlayerReadyEvent.class, event -> {
+                Ref<EntityStore> ref = event.getPlayerRef();
+                if (!ref.isValid()) return;
+
+                Store<EntityStore> store = ref.getStore();
+                store.addComponent(ref, Essentials.getInstance().getAfkComponentType(), new AfkComponent());
+            });
+        }
     }
 
     public ComponentType<EntityStore, AfkComponent> getAfkComponentType() {
